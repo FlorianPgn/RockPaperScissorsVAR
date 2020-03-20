@@ -24,7 +24,7 @@ im = cv2.imread("images/stone1.jpg")
 # start the FPS throughput estimator
 fps = FPS().start()
 
-thresh = lambda x: [255, 255, 255] if (132 < x[1] < 165) or (90 < x[2] < 105) else [0, 0, 0]
+extract = lambda x: [255, 255, 255] if (132 < x[1] < 165) or (90 < x[2] < 105) else [0, 0, 0]
 
 backSub = cv2.createBackgroundSubtractorMOG2(0)
 backgroundSet = False
@@ -41,39 +41,34 @@ while True:
     (h, w) = frame.shape[:2]
 
     if backgroundSet:
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (21, 21), 0)
-
-        difference = cv2.absdiff(gray, bg)
-
-        # Apply thresholding to eliminate noise
-        thresh = cv2.threshold(difference, 25, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.dilate(thresh, None, iterations=2)
 
         fgmask = backSub.apply(frame)
         kernel = np.ones((3, 3), np.uint8)
         fgmask = cv2.dilate(fgmask, kernel, iterations=1)
         fgmask = cv2.erode(fgmask, kernel, iterations=1)
-        mask = cv2.bitwise_and(frame, frame, mask=fgmask)
+        masked_img = cv2.bitwise_and(frame, frame, mask=fgmask)
 
-        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+        ycrcb = cv2.cvtColor(masked_img, cv2.COLOR_BGR2YCR_CB)
+        channels = cv2.split(ycrcb)
+        cr = cv2.inRange(channels[1], 132, 165)
+        cb = cv2.inRange(channels[2], 90, 105)
+        thresh = cv2.bitwise_or(cr, cb)
 
-        # res = np.logical_and(frame[:,:,1] > 80,frame[:,:,1] < 105)
-        # res = np.array([[thresh(col) for col in row] for row in frame], dtype=np.uint8)
-
-        gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(masked_img, cv2.COLOR_BGR2GRAY)
         # gray = cv2.GaussianBlur(gray, (21, 21), 0)
-        thresh = cv2.threshold(gray, 25, 255, cv2.THRESH_BINARY)[1]
+
+        # Apply thresholding to eliminate noise
+        # thresh = cv2.threshold(gray, 25, 255, cv2.THRESH_BINARY)[1]
         thresh = cv2.dilate(thresh, None, iterations=1)
         thresh = cv2.erode(thresh, None, iterations=1)
 
-        res = thresh
+        # res = masked_img
 
         # print(np.unique(res))
         # print(np.shape(res))
         # print(res)
 
-        res = cv2.flip(res, 1)
+        res = cv2.flip(thresh, 1)
         # print(np.shape(res))
         # cv2.imshow("BW", frame)
     else:
