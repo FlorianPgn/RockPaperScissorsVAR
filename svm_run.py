@@ -1,6 +1,7 @@
 # USAGE
-# python svm_run.py -i image.jpg -t output/svm_h.pickle -l output/le_svm_h.pickle -m h_proj
+# python svm_run.py -i dataset/test/ -t output/svm_h_proj.pickle -l output/le_h_proj.pickle -m h_proj
 
+from imutils import paths
 import numpy as np
 import argparse
 import imutils
@@ -31,34 +32,57 @@ def run(input, trainedsvm, labelencoder, model) :
     print("[INFO] loading labels...")
     le = pickle.loads(open(labelencoder, "rb").read())
 
-    print("[INFO] loading image...")
-    image = cv2.imread(input)
-    image = imutils.resize(image, width=100)
+    print("[INFO] extracting images paths...")
+    imagePaths = list(paths.list_images(input))
 
-    print("[INFO] feature extraction...")
-    imageBW = bina.binarise_lambda(image)
-    features = f_extractor(imageBW)
-    features = features.reshape(1, -1)
+    errors = []
 
-    print("[INFO] prediction...")
-    preds = recognizer.predict_proba(features)[0]
-    j = np.argmax(preds)
-    proba = preds[j]
-    sign = le.classes_[j]
+    total = 0   
 
-    return sign, proba
+    for (i, imagePath) in enumerate(imagePaths):
+
+        print("[INFO] testing image {}/{}...".format(i + 1, len(imagePaths)))
+        name = imagePath.split(os.path.sep)[-2]
+
+        image = cv2.imread(imagePath)
+        image = imutils.resize(image, width=100)
+
+        imageBW = bina.binarise_lambda(image)
+
+        features = f_extractor(imageBW)
+        features = features.reshape(1, -1)
+
+        preds = recognizer.predict_proba(features)[0]
+        j = np.argmax(preds)
+        proba = preds[j]
+        sign = le.classes_[j]
+
+
+        if sign != name :
+            errors.append(imagePath)
+            print("        image : {}".format(imagePath))
+            print("        signe : {}".format(name))
+            print("        prediction : {}".format(sign))
+            print("        proba : {}%".format(round(proba * 100, 2)))
+
+        total += 1
+
+    return total, errors
 
 
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--image", required=True, help="the path to the input image")
+    ap.add_argument("-i", "--input", required=True, help="the path to the input test directory")
     ap.add_argument("-t", "--trainedsvm", required=True, help="path to input model trained to recognize signs")
     ap.add_argument("-l", "--labelencoder", required=True, help="path to input label encoder")
     ap.add_argument("-m", "--model", required=True, help="type of features extracted (pixel_nb, h_proj, v_proj)")
     args = vars(ap.parse_args())
 
-    prediction, proba = run(args["image"], args["trainedsvm"], args["labelencoder"], args["model"])
+    total, errors = run(args["input"], args["trainedsvm"], args["labelencoder"], args["model"])
 
-    print("[RESULT] sign detected : {}".format(prediction))
-    print("[RESULT] probability : {}%".format(round(proba * 100, 2)))
+    print("[RESULT] number of images tested : {}".format(total))
+    print("[RESULT] number of errors : {}".format(len(errors)))
+    print("[RESULT] taux de bonne prédiction : {}%".format(round(((total - len(errors)) / total) * 100, 2)))
+    #print("[RESULT] erreurs :")
+    #print(errors)
