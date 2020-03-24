@@ -1,43 +1,43 @@
 import argparse
 
 def check_win(player1_sign, player2_sign) :
-    if player1_sign == "rock" :
+    if player1_sign == "Rock" :
 
-        if player2_sign == "rock" :
+        if player2_sign == "Rock" :
             return 0
 
-        elif player2_sign == "paper" :
+        elif player2_sign == "Paper" :
             return -1
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "Scissors" :
             return 1
 
         else :
             print("Erreur : le signe du joueur 2 n'a pas été reconnu.")
 
-    elif player1_sign == "paper" :
+    elif player1_sign == "Paper" :
         
-        if player2_sign == "rock" :
+        if player2_sign == "Rock" :
             return 1
 
-        elif player2_sign == "paper" :
+        elif player2_sign == "Paper" :
             return 0
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "Scissors" :
             return -1
 
         else :
             print("Erreur : le signe du joueur 2 n'a pas été reconnu.")
 
-    elif player1_sign == "cissors" :
+    elif player1_sign == "Scissors" :
         
-        if player2_sign == "rock" :
+        if player2_sign == "Rock" :
              return -1
 
-        elif player2_sign == "paper" :
+        elif player2_sign == "Paper" :
             return 1
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "Scissors" :
             return 0
 
         else :
