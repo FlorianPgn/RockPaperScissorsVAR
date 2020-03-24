@@ -18,16 +18,6 @@ def debug(value):
 
 
 def compute_properties(img, display=True):
-    # calculate moments of binary image
-    M = cv2.moments(img)
-
-    # calculate x,y coordinate of center
-    if M["m00"] != 0:
-        cX = int(M["m10"] / M["m00"])
-        cY = int(M["m01"] / M["m00"])
-    else:
-        cX = cY = 0
-
     # Find contours for bounding box and convex hull
     _, contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
@@ -39,17 +29,28 @@ def compute_properties(img, display=True):
         x = y = w = h = 0
         hull = None
 
+    box = get_region(img, (x, y, w, h))
+
+    # calculate moments of binary image
+    M = cv2.moments(box)
+    # calculate x,y coordinate of center
+    if M["m00"] != 0:
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+    else:
+        cX = cY = 0
+
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     if display:
         # draw point at the centroid
-        cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
+        cv2.circle(img, (x+cX, y+cY), 5, (0, 0, 255), -1)
         # draw bounding box
         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
         if hull is not None:
             print(len(hull))
             cv2.drawContours(img, [hull], 0, (0, 0, 255))
 
-    return img, (cX, cY), (x, y, w, h), hull
+    return img, (x+cX, y+cY), (x, y, w, h), hull
 
 
 def ycbcr_binarize(img):
@@ -77,6 +78,15 @@ def get_region(img, box):
         print("False")
         return img
 
+
+def write_text(img, text, position, color=(0, 0, 255), center=True, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=0.6, line_type=1):
+    text_width, text_height = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, line_type)[0]
+    if center:
+        position = (int(position[0]-text_width/2), int(position[1]-text_height/2))
+    cv2.putText(img, text, position, font, font_scale, color, line_type)
+
+
+# ---- MAIN -----
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -146,6 +156,8 @@ while True:
         # Attach back left and right with a separator in the middle
         final = np.hstack((left, np.full((h, 1, 3), 125, dtype=np.uint8), right))
 
+        text = "Cr: [{}, {}] - Cb: [{}, {}]".format(crMin, crMax, cbMin, cbMax)
+        write_text(final, text, (w/2, 30))
         cv2.imshow("Result", final)
 
     else:
@@ -155,7 +167,6 @@ while True:
     # update the FPS counter
     fps.update()
     # show the output frame
-    # cv2.imshow("Frame", flip)
     key = cv2.waitKey(1)
 
     # if the `q` key was pressed, break from the loop
@@ -185,7 +196,11 @@ while True:
     if key == ord("v"):
         cbMax += 1
     if key == ord("p"):
-        print("Cr : [{}, {}] - Cb : [{}, {}]".format(crMin, crMax, cbMin, cbMax))
+        # Write some Text
+        pass
+        # print("Cr : [{}, {}] - Cb : [{}, {}]".format(crMin, crMax, cbMin, cbMax))
+
+
 # stop the timer and display FPS information
 fps.stop()
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
