@@ -28,14 +28,16 @@ def compute_properties(img, display=True):
     else:
         cX = cY = 0
 
-    # Find contours for bounding box
+    # Find contours for bounding box and convex hull
     _, contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
         # find the largest countour by area
         c = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(c)
+        hull = cv2.convexHull(c)
     else:
         x = y = w = h = 0
+        hull = None
 
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     if display:
@@ -43,8 +45,11 @@ def compute_properties(img, display=True):
         cv2.circle(img, (cX, cY), 5, (0, 0, 255), -1)
         # draw bounding box
         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if hull is not None:
+            print(len(hull))
+            cv2.drawContours(img, [hull], 0, (0, 0, 255))
 
-    return img, (cX, cY), (x, y, w, h)
+    return img, (cX, cY), (x, y, w, h), hull
 
 
 def ycbcr_binarize(img):
@@ -60,6 +65,18 @@ def remove_bg(img, bg, threshold):
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
     diff = cv2.absdiff(gray, bg)
     return cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)[1]
+
+
+def get_region(img, box):
+    x, y, w, h = box
+
+    (height, width) = img.shape[:2]
+    if h < height and w < width:
+        return img[y:y+h, x:x+w]
+    else:
+        print("False")
+        return img
+
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -90,16 +107,18 @@ while True:
     frame = vs.read()
 
     # resize the frame to have a width of 600 pixels (while maintaining the aspect ratio)
-    frame = imutils.resize(frame, width=600)
+    frame = imutils.resize(frame, width=800)
     (h, w) = frame.shape[:2]
 
     if backgroundSet:
         # Backgroud substraction technique
-        # fgmask = backSub.apply(frame)
+        # fgmask = backSub.apply(frame, learningRate=.0005)
         # kernel = np.ones((3, 3), np.uint8)
         # fgmask = cv2.dilate(fgmask, kernel, iterations=1)
         # fgmask = cv2.erode(fgmask, kernel, iterations=1)
-        # masked_img = cv2.bitwise_and(frame, frame, mask=fgmask)
+        # thresh = cv2.bitwise_and(frame, frame, mask=fgmask)
+        # cv2.imshow("Result", fgmask)
+        # cv2.waitKey()
 
         # YCbCr technique
         thresh = ycbcr_binarize(frame)
@@ -107,7 +126,7 @@ while True:
         # Background substraction with firt frame
         # thresh = remove_bg(frame, bg, t)
         # Try to eliminate most of the noise
-        thresh = cv2.erode(thresh, None, iterations=1)
+        thresh = cv2.erode(thresh, None, iterations=2)
         thresh = cv2.dilate(thresh, None, iterations=3)
 
         # cv2.imshow("Result", thresh)
@@ -117,8 +136,12 @@ while True:
         right = res[:, int(w / 2):]
 
         # Compute and display visual properties
-        left, l_centroid, l_bounds = compute_properties(left)
-        right, r_centroid, r_bounds = compute_properties(right)
+        left, l_centroid, l_bounds, l_hull = compute_properties(left)
+        right, r_centroid, r_bounds, r_hull = compute_properties(right)
+        i = get_region(left, l_bounds)
+
+        if np.shape(i)[0] > 0 and np.shape(i)[1] > 0:
+            cv2.imshow("Left hand", i)
 
         # Attach back left and right with a separator in the middle
         final = np.hstack((left, np.full((h, 1, 3), 125, dtype=np.uint8), right))
@@ -140,7 +163,7 @@ while True:
         break
 
     if key == ord("b"):
-        # backSub = cv2.createBackgroundSubtractorMOG2(0)
+        backSub = cv2.createBackgroundSubtractorMOG2(history=10, varThreshold=50, detectShadows=False)
         # bg = frame
         bg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         bg = cv2.GaussianBlur(bg, (21, 21), 0)
