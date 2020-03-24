@@ -1,0 +1,83 @@
+linear svm h_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 193
+[RESULT] taux de bonne prédiction : 48.12%
+
+rbf svm h_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 236
+[RESULT] taux de bonne prédiction : 36.56%
+
+poly svm h_proj 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 195
+[RESULT] taux de bonne prédiction : 47.58%
+
+------------------------
+
+linear svm v_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 147
+[RESULT] taux de bonne prédiction : 60.48%
+
+rbf svm v_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 93
+[RESULT] taux de bonne prédiction : 75.0%
+
+poly svm v_proj 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 91
+[RESULT] taux de bonne prédiction : 75.54%
+
+sigmoid svm v_proj 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 234
+[RESULT] taux de bonne prédiction : 37.1%
+
+-------------
+
+linear svm native
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 123
+[RESULT] taux de bonne prédiction : 66.94%
+
+rbf svm native
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 113
+[RESULT] taux de bonne prédiction : 69.62%
+
+poly svm native 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 156
+[RESULT] taux de bonne prédiction : 58.06%
+
+-----------
+
+linear svm native 50
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 120
+[RESULT] taux de bonne prédiction : 67.74%
+
+rbf svm native 50
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 112
+[RESULT] taux de bonne prédiction : 69.89%
+
+poly svm native 50
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 147
+[RESULT] taux de bonne prédiction : 60.48%
