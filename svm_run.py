@@ -11,7 +11,16 @@ import binarisation as bina
 import features as feat
 
 
-def run(input, trainedsvm, labelencoder, model) :
+def load(trainedsvm, labelencoder, model):
+    print("[INFO] loading SVM...")
+    recognizer = pickle.loads(open(trainedsvm, "rb").read())
+
+    print("[INFO] loading labels...")
+    le = pickle.loads(open(labelencoder, "rb").read())
+    return recognizer, le
+
+
+def run(image, recognizer, le, model):
 
     if model == "pixel_nb" :
         print("[INFO] feature extractor model : pixel_number()")
@@ -26,14 +35,6 @@ def run(input, trainedsvm, labelencoder, model) :
         print("[INFO] error : feature extractor model {} not found. Try pixel_nb, h_proj or v_proj".format(model))
         return
 
-    print("[INFO] loading SVM...")
-    recognizer = pickle.loads(open(trainedsvm, "rb").read())
-    print("[INFO] loading labels...")
-    le = pickle.loads(open(labelencoder, "rb").read())
-
-    print("[INFO] loading image...")
-    image = cv2.imread(input)
-    image = imutils.resize(image, width=100)
 
     print("[INFO] feature extraction...")
     imageBW = bina.binarise_lambda(image)
@@ -58,7 +59,13 @@ if __name__ == '__main__':
     ap.add_argument("-m", "--model", required=True, help="type of features extracted (pixel_nb, h_proj, v_proj)")
     args = vars(ap.parse_args())
 
-    prediction, proba = run(args["image"], args["trainedsvm"], args["labelencoder"], args["model"])
+    recognizer, le = load(args["trainedsvm"], args["labelencoder"])
+
+    print("[INFO] loading image...")
+    image = cv2.imread(args["image"])
+    image = imutils.resize(image, width=100)
+
+    prediction, proba = run(image, recognizer, le, args["model"])
 
     print("[RESULT] sign detected : {}".format(prediction))
     print("[RESULT] probability : {}%".format(round(proba * 100, 2)))
