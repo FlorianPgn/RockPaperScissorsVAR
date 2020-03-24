@@ -9,7 +9,7 @@ import cv2
 import os
 import svm_run
 
-DEBUG = True
+DEBUG = False
 
 
 def debug(value):
@@ -22,12 +22,12 @@ def compute_properties(img, display=True):
     _, contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
         # find the largest countour by area
-        c = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(c)
-        hull = cv2.convexHull(c)
+        widestC = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(widestC)
+        hull = cv2.convexHull(widestC)
     else:
         x = y = w = h = 0
-        hull = None
+        widestC = hull = None
 
     box = get_region(img, (x, y, w, h))
 
@@ -47,10 +47,47 @@ def compute_properties(img, display=True):
         # draw bounding box
         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
         if hull is not None:
-            print(len(hull))
             cv2.drawContours(img, [hull], 0, (0, 0, 255))
 
-    return img, (x+cX, y+cY), (x, y, w, h), hull
+    return img, (x+cX, y+cY), (x, y, w, h), widestC, hull
+
+
+def get_coord(c, idx):
+    return np.array(c[idx][0])
+
+
+def count_defects(c, img):
+    if c is None:
+        return 0
+    count = 0
+    hull = cv2.convexHull(c, returnPoints=False)
+    if len(hull) > 3:
+        defects = cv2.convexityDefects(c, hull)
+        if defects is not None:
+            for d in defects:
+                start_idx, end_idx, farthest_idx, _ = d[0]
+                start = get_coord(c, start_idx)
+                end = get_coord(c, end_idx)
+                farthest = get_coord(c, farthest_idx)
+                # cv2.circle(img, (farthest[0], farthest[1]), 5, (255, 0, 0), 2)
+                if get_angle(farthest, start, end) < 1.6:
+                    count += 1
+
+    return count
+
+
+# Return angle of p1p2 and p1p3
+def get_angle(p1, p2, p3):
+    # p1p2 = p2-p1/np.linalg.norm(p2-p1)
+    # p1p3 = p3-p1/np.linalg.norm(p3-p1)
+    # dot = np.dot(p1p2, p1p3)
+    # print(dot)
+    dist_a = np.linalg.norm(p2-p1)
+    dist_b = np.linalg.norm(p3-p1)
+    dist_c = np.linalg.norm(p3-p2)
+    x = (dist_a ** 2 + dist_b ** 2 - dist_c ** 2) / (2 * dist_a * dist_b)
+
+    return np.arccos(x)
 
 
 def ycbcr_binarize(img):
@@ -75,7 +112,7 @@ def get_region(img, box):
     if h < height and w < width:
         return img[y:y+h, x:x+w]
     else:
-        print("False")
+        debug("False region")
         return img
 
 
@@ -146,18 +183,22 @@ while True:
         right = res[:, int(w / 2):]
 
         # Compute and display visual properties
-        left, l_centroid, l_bounds, l_hull = compute_properties(left)
-        right, r_centroid, r_bounds, r_hull = compute_properties(right)
-        i = get_region(left, l_bounds)
+        left, l_centroid, l_bounds, l_cnt, l_hull = compute_properties(left)
+        right, r_centroid, r_bounds, r_cnt, r_hull = compute_properties(right)
 
-        if np.shape(i)[0] > 0 and np.shape(i)[1] > 0:
-            cv2.imshow("Left hand", i)
+        l_fingers = count_defects(l_cnt, left)
+
+        left_hand = get_region(left, l_bounds)
+        if np.shape(left_hand)[0] > 0 and np.shape(left_hand)[1] > 0:
+            # cv2.imshow("Left hand", left_hand)
+            pass
 
         # Attach back left and right with a separator in the middle
         final = np.hstack((left, np.full((h, 1, 3), 125, dtype=np.uint8), right))
 
         text = "Cr: [{}, {}] - Cb: [{}, {}]".format(crMin, crMax, cbMin, cbMax)
         write_text(final, text, (w/2, 30))
+        write_text(final, str(l_fingers), (30, 30), color=(255, 0, 255))
         cv2.imshow("Result", final)
 
     else:
