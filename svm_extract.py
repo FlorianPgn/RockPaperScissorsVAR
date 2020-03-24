@@ -23,6 +23,9 @@ def extract(input, output, model, size):
     elif model == "v_proj" :
         print("[INFO] feature extractor model : vertical_projection()")
         f_extractor = feat.vertical_projection
+    elif model == "native" :
+        print("[INFO] feature extractor model : native()")
+        f_extractor = feat.native
     else :
         print("[INFO] error : feature extractor model {} not found. Try pixel_nb, h_proj or v_proj".format(model))
         return
@@ -53,7 +56,7 @@ def extract(input, output, model, size):
 
     print("[INFO] gathering features and labels...")
     data = {"features": knownFeatures, "labels": knownNames}
-    print(data)
+    #print(data)
 
     print("[INFO] saving features and labels...")
     f = open(output, "wb")
