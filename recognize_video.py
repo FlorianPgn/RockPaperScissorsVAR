@@ -294,7 +294,7 @@ while True:
 
         # Display right hand detection
         write_text(final, str(r_finger_count), (w-40, 30), color=(255, 0, 255))
-        write_text(final, get_shape_from_count(r_finger_count), (w-40, 60), color=(255, 0, 255))
+        write_text(final, r_shape_detected, (w-40, 60), color=(255, 0, 255))
 
         # Display score:
         text = "{}-{}".format(scores[0], scores[1])
