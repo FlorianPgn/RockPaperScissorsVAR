@@ -137,6 +137,21 @@ def write_text(img, text, position, color=(0, 0, 255), center=True, font=cv2.FON
     cv2.putText(img, text, position, font, font_scale, color, line_type)
 
 
+def get_shape_from_count(count):
+    shape = "Paper" if count > 3 else "Scissors"
+    return "Rock" if count == 0 else shape
+
+
+def reset_bg():
+    back_sub = cv2.createBackgroundSubtractorMOG2(history=10, varThreshold=50, detectShadows=False)
+    bg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    bg = cv2.GaussianBlur(bg, (5, 5), 0)
+    background_set = True
+    cv2.imshow("Bg", bg)
+    return back_sub, bg, background_set
+
+
+
 # ---- MAIN -----
 
 # construct the argument parser and parse the arguments
@@ -153,8 +168,8 @@ time.sleep(2.0)
 # start the FPS throughput estimator
 fps = FPS().start()
 
-backSub = cv2.createBackgroundSubtractorMOG2(0)
-backgroundSet = False
+back_sub = cv2.createBackgroundSubtractorMOG2(0)
+background_set = False
 
 t = 30
 cbMin = 90
@@ -171,7 +186,7 @@ while True:
     frame = imutils.resize(frame, width=800)
     (h, w) = frame.shape[:2]
 
-    if backgroundSet:
+    if background_set:
         # YCbCr technique to keep global skin zones
         thresh = ycbcr_binarize(frame)
         kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (4, 4))
@@ -185,7 +200,7 @@ while True:
         # Backgroud substraction technique
         # Background substraction with first frame
         # fgmask = remove_bg(frame, bg, t)
-        fgmask = backSub.apply(frame, learningRate=0000)
+        fgmask = back_sub.apply(frame, learningRate=0000)
         # Smooth mask by blurring it and thresholding it
         fgmask = cv2.GaussianBlur(fgmask, (21, 21), 0)
         fgmask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)[1]
@@ -209,7 +224,8 @@ while True:
         left, l_centroid, l_bounds, l_cnt, l_hull = compute_properties(left)
         right, r_centroid, r_bounds, r_cnt, r_hull = compute_properties(right)
 
-        l_fingers = count_defects(l_cnt, left)
+        l_finger_count = count_defects(l_cnt, left)
+        r_finger_count = count_defects(r_cnt, right)
 
         left_hand = get_region(left, l_bounds)
         if np.shape(left_hand)[0] > 0 and np.shape(left_hand)[1] > 0:
@@ -219,12 +235,18 @@ while True:
         # Attach back left and right with a separator in the middle
         final = np.hstack((left, np.full((h, 1, 3), 125, dtype=np.uint8), right))
 
+        # Display Cr Cb intervals
         text = "Cr: [{}, {}] - Cb: [{}, {}]".format(crMin, crMax, cbMin, cbMax)
         write_text(final, text, (w/2, 30))
-        write_text(final, str(l_fingers), (40, 30), color=(255, 0, 255))
-        shape = "Paper" if l_fingers > 3 else "Scissors"
-        shape = "Rock" if l_fingers == 0 else shape
-        write_text(final, shape, (40, 60), color=(255, 0, 255))
+
+        # Display left hand detection
+        write_text(final, str(l_finger_count), (40, 30), color=(255, 0, 255))
+        write_text(final, get_shape_from_count(l_finger_count), (40, 60), color=(255, 0, 255))
+
+        # Display right hand detection
+        write_text(final, str(r_finger_count), (w-40, 30), color=(255, 0, 255))
+        write_text(final, get_shape_from_count(r_finger_count), (w-40, 60), color=(255, 0, 255))
+
         cv2.imshow("Result", final)
 
     else:
@@ -240,13 +262,7 @@ while True:
     if key == ord("q"):
         break
 
-    if key == ord("b"):
-        backSub = cv2.createBackgroundSubtractorMOG2(history=10, varThreshold=50, detectShadows=False)
-        bg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        bg = cv2.GaussianBlur(bg, (5, 5), 0)
-        backgroundSet = True
-        cv2.imshow("Bg", bg)
-
+    reset = False
     if key == ord("k"):
         t -= 5
     if key == ord("l"):
@@ -254,24 +270,31 @@ while True:
 
     if key == ord("a"):
         crMin -= 1
+        reset = True
     if key == ord("z"):
         crMin += 1
+        reset = True
     if key == ord("e"):
         crMax -= 1
+        reset = True
     if key == ord("r"):
         crMax += 1
+        reset = True
     if key == ord("w"):
         cbMin -= 1
+        reset = True
     if key == ord("x"):
         cbMin += 1
+        reset = True
     if key == ord("c"):
         cbMax -= 1
+        reset = True
     if key == ord("v"):
         cbMax += 1
-    if key == ord("p"):
-        # Write some Text
-        pass
-        # print("Cr : [{}, {}] - Cb : [{}, {}]".format(crMin, crMax, cbMin, cbMax))
+        reset = True
+
+    if key == ord("b") or reset:
+        back_sub, bg, background_set = reset_bg()
 
 
 # stop the timer and display FPS information
