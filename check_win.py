@@ -9,7 +9,7 @@ def check_win(player1_sign, player2_sign) :
         elif player2_sign == "paper" :
             return -1
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "scissors" :
             return 1
 
         else :
@@ -23,13 +23,13 @@ def check_win(player1_sign, player2_sign) :
         elif player2_sign == "paper" :
             return 0
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "scissors" :
             return -1
 
         else :
             print("Erreur : le signe du joueur 2 n'a pas été reconnu.")
 
-    elif player1_sign == "cissors" :
+    elif player1_sign == "scissors" :
         
         if player2_sign == "rock" :
              return -1
@@ -37,7 +37,7 @@ def check_win(player1_sign, player2_sign) :
         elif player2_sign == "paper" :
             return 1
 
-        elif player2_sign == "cissors" :
+        elif player2_sign == "scissors" :
             return 0
 
         else :

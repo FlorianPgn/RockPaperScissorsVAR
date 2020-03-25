@@ -9,6 +9,8 @@ import cv2
 import os
 import svm_run
 import scipy.interpolate as si
+from check_win import check_win
+from collections import deque
 
 DEBUG = False
 
@@ -43,8 +45,9 @@ def compute_properties(img, display=True):
         widestC = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(widestC)
         hull = cv2.convexHull(widestC)
+        area = cv2.contourArea(widestC)
     else:
-        x = y = w = h = 0
+        x = y = w = h = area = 0
         widestC = hull = None
 
     box = get_region(img, (x, y, w, h))
@@ -67,7 +70,7 @@ def compute_properties(img, display=True):
         if hull is not None:
             cv2.drawContours(img, [hull], 0, (0, 0, 255))
 
-    return img, (x+cX, y+cY), (x, y, w, h), widestC, hull
+    return img, (x+cX, y+cY), (x, y, w, h), widestC, hull, area
 
 
 def get_coord(c, idx):
@@ -151,6 +154,24 @@ def reset_bg():
     return back_sub, bg, background_set
 
 
+def update_history(history, centroid):
+    history.append((time.time(), np.array(centroid)))
+    while time.time() - history[0][0] > 0.2:
+        if len(history) > 0:
+            history.popleft()
+
+
+def hand_stabilized(history):
+    coords = np.array(history)[:, 1]
+    x = [coord[0] for coord in coords]
+    y = [coord[1] for coord in coords]
+    # print(np.std(x), np.std(y))
+
+    stabilized = False
+    if len(coords) > 5:
+        thr = 8
+        stabilized = np.std(x) < thr and np.std(y) < thr
+    return stabilized
 
 # ---- MAIN -----
 
@@ -176,6 +197,15 @@ cbMin = 90
 cbMax = 105
 crMin = 134
 crMax = 165
+
+l_centroid_history = deque()
+r_centroid_history = deque()
+
+l_stabilized = r_stabilized = False
+l_shape_detected = r_shape_detected = ""
+reset_time = time.time()
+
+scores = [0, 0]
 
 # loop over frames from the video file stream
 while True:
@@ -221,16 +251,35 @@ while True:
         right = res[:, int(w / 2):]
 
         # Compute and display visual properties
-        left, l_centroid, l_bounds, l_cnt, l_hull = compute_properties(left)
-        right, r_centroid, r_bounds, r_cnt, r_hull = compute_properties(right)
+        left, l_centroid, l_bounds, l_cnt, l_hull, l_area = compute_properties(left)
+        right, r_centroid, r_bounds, r_cnt, r_hull, r_area = compute_properties(right)
 
         l_finger_count = count_defects(l_cnt, left)
         r_finger_count = count_defects(r_cnt, right)
 
-        left_hand = get_region(left, l_bounds)
-        if np.shape(left_hand)[0] > 0 and np.shape(left_hand)[1] > 0:
-            # cv2.imshow("Left hand", left_hand)
-            pass
+        if l_area > 100 and time.time() - reset_time > 1.5:
+            update_history(l_centroid_history, l_centroid)
+            if not l_stabilized:
+                l_stabilized = hand_stabilized(l_centroid_history)
+                l_shape_detected = get_shape_from_count(l_finger_count) if l_stabilized else ""
+        if r_area > 100 and time.time() - reset_time > 1.5:
+            update_history(r_centroid_history, r_centroid)
+            if not r_stabilized:
+                r_stabilized = hand_stabilized(r_centroid_history)
+                r_shape_detected = get_shape_from_count(r_finger_count) if r_stabilized else ""
+
+        if l_stabilized and r_stabilized:
+            l_centroid_history = deque()
+            r_centroid_history = deque()
+            l_stabilized = r_stabilized = False
+            reset_time = time.time()
+            print(l_shape_detected, r_shape_detected)
+            winner = check_win(l_shape_detected.lower(), r_shape_detected.lower())
+            if winner > 0:
+                scores[0] += 1
+            if winner < 0:
+                scores[1] += 1
+
 
         # Attach back left and right with a separator in the middle
         final = np.hstack((left, np.full((h, 1, 3), 125, dtype=np.uint8), right))
@@ -241,11 +290,15 @@ while True:
 
         # Display left hand detection
         write_text(final, str(l_finger_count), (40, 30), color=(255, 0, 255))
-        write_text(final, get_shape_from_count(l_finger_count), (40, 60), color=(255, 0, 255))
+        write_text(final, l_shape_detected, (40, 60), color=(255, 0, 255))
 
         # Display right hand detection
         write_text(final, str(r_finger_count), (w-40, 30), color=(255, 0, 255))
         write_text(final, get_shape_from_count(r_finger_count), (w-40, 60), color=(255, 0, 255))
+
+        # Display score:
+        text = "{}-{}".format(scores[0], scores[1])
+        write_text(final, text, (w/2, 70), color=(255, 0, 255), font_scale=1, line_type=2)
 
         cv2.imshow("Result", final)
 
@@ -295,6 +348,7 @@ while True:
 
     if key == ord("b") or reset:
         back_sub, bg, background_set = reset_bg()
+        scores = [0,0]
 
 
 # stop the timer and display FPS information
