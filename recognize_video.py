@@ -8,6 +8,7 @@ import time
 import cv2
 import os
 import svm_run
+import scipy.interpolate as si
 
 DEBUG = False
 
@@ -17,9 +18,26 @@ def debug(value):
         print(value)
 
 
+def smooth(c):
+    x, y = c.T
+    # Convert from numpy arrays to normal arrays
+    x = x.tolist()[0]
+    y = y.tolist()[0]
+    # print(x, y)
+    # https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.interpolate.splprep.html
+    tck, u = si.splprep([x, y], u=None, s=1.0, per=1)
+    u_new = np.linspace(u.min(), u.max(), 25)
+    # https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.interpolate.splev.html
+    x_new, y_new = si.splev(u_new, tck, der=0)
+    # Convert it back to numpy format for opencv to be able to display it
+    res_array = [[[int(i[0]), int(i[1])]] for i in zip(x_new, y_new)]
+    return np.asarray(res_array, dtype=np.int32)
+
+
 def compute_properties(img, display=True):
     # Find contours for bounding box and convex hull
     _, contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
     if len(contours) > 0:
         # find the largest countour by area
         widestC = max(contours, key=cv2.contourArea)
@@ -78,10 +96,6 @@ def count_defects(c, img):
 
 # Return angle of p1p2 and p1p3
 def get_angle(p1, p2, p3):
-    # p1p2 = p2-p1/np.linalg.norm(p2-p1)
-    # p1p3 = p3-p1/np.linalg.norm(p3-p1)
-    # dot = np.dot(p1p2, p1p3)
-    # print(dot)
     dist_a = np.linalg.norm(p2-p1)
     dist_b = np.linalg.norm(p3-p1)
     dist_c = np.linalg.norm(p3-p2)
@@ -142,7 +156,7 @@ fps = FPS().start()
 backSub = cv2.createBackgroundSubtractorMOG2(0)
 backgroundSet = False
 
-t = 25
+t = 30
 cbMin = 90
 cbMax = 105
 crMin = 134
@@ -158,25 +172,34 @@ while True:
     (h, w) = frame.shape[:2]
 
     if backgroundSet:
-        # Backgroud substraction technique
-        # fgmask = backSub.apply(frame, learningRate=.0005)
-        # kernel = np.ones((3, 3), np.uint8)
-        # fgmask = cv2.dilate(fgmask, kernel, iterations=1)
-        # fgmask = cv2.erode(fgmask, kernel, iterations=1)
-        # thresh = cv2.bitwise_and(frame, frame, mask=fgmask)
-        # cv2.imshow("Result", fgmask)
-        # cv2.waitKey()
-
-        # YCbCr technique
+        # YCbCr technique to keep global skin zones
         thresh = ycbcr_binarize(frame)
+        kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (4, 4))
+        thresh = cv2.erode(thresh, kernel, iterations=3)
+        thresh = cv2.dilate(thresh, kernel, iterations=5)
+        # Mask the frame and keep skin zones
+        frame = cv2.bitwise_and(frame, frame, mask=thresh)
 
-        # Background substraction with firt frame
-        # thresh = remove_bg(frame, bg, t)
+        # cv2.imshow("Skin mask", frame)
+
+        # Backgroud substraction technique
+        # Background substraction with first frame
+        # fgmask = remove_bg(frame, bg, t)
+        fgmask = backSub.apply(frame, learningRate=0000)
+        # Smooth mask by blurring it and thresholding it
+        fgmask = cv2.GaussianBlur(fgmask, (21, 21), 0)
+        fgmask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)[1]
+
+        thresh = fgmask
         # Try to eliminate most of the noise
-        thresh = cv2.erode(thresh, None, iterations=2)
-        thresh = cv2.dilate(thresh, None, iterations=3)
+        thresh = cv2.erode(thresh, kernel, iterations=1)
+        thresh = cv2.dilate(thresh, kernel, iterations=1)
 
-        # cv2.imshow("Result", thresh)
+        frame = cv2.bitwise_and(frame, frame, mask=fgmask)
+
+        # cv2.imshow("Mask", thresh)
+        # cv2.imshow("Masked live", frame)
+
         # Split left and right (one player per side a.k.a 1 hand per side)
         res = cv2.flip(thresh, 1)
         left = res[:, :int(w / 2)]
@@ -198,7 +221,10 @@ while True:
 
         text = "Cr: [{}, {}] - Cb: [{}, {}]".format(crMin, crMax, cbMin, cbMax)
         write_text(final, text, (w/2, 30))
-        write_text(final, str(l_fingers), (30, 30), color=(255, 0, 255))
+        write_text(final, str(l_fingers), (40, 30), color=(255, 0, 255))
+        shape = "Paper" if l_fingers > 3 else "Scissors"
+        shape = "Rock" if l_fingers == 0 else shape
+        write_text(final, shape, (40, 60), color=(255, 0, 255))
         cv2.imshow("Result", final)
 
     else:
@@ -216,10 +242,16 @@ while True:
 
     if key == ord("b"):
         backSub = cv2.createBackgroundSubtractorMOG2(history=10, varThreshold=50, detectShadows=False)
-        # bg = frame
         bg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        bg = cv2.GaussianBlur(bg, (21, 21), 0)
+        bg = cv2.GaussianBlur(bg, (5, 5), 0)
         backgroundSet = True
+        cv2.imshow("Bg", bg)
+
+    if key == ord("k"):
+        t -= 5
+    if key == ord("l"):
+        t += 5
+
     if key == ord("a"):
         crMin -= 1
     if key == ord("z"):
