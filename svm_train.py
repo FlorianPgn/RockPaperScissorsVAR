@@ -17,7 +17,7 @@ def train(trainingdatas, trainedsvm, labelencoder) :
     labels = le.fit_transform(data["labels"])
 
     print("[INFO] training model...")
-    recognizer = SVC(C=1.0, kernel="linear", probability=True)
+    recognizer = SVC(C=1.0, kernel="sigmoid", probability=True)
     recognizer.fit(data["features"], labels)
 
     print("[INFO] saving the trained SVM...")

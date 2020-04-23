@@ -44,6 +44,32 @@ sigmoid svm v_proj
 
 -------------
 
+linear svm d_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 154
+[RESULT] taux de bonne prédiction : 58.6%
+
+rbf svm d_proj
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 135
+[RESULT] taux de bonne prédiction : 63.71%
+
+poly svm d_proj 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 160
+[RESULT] taux de bonne prédiction : 56.99%
+
+sigmoid svm d_proj 
+
+[RESULT] number of images tested : 372
+[RESULT] number of errors : 237
+[RESULT] taux de bonne prédiction : 36.29%
+
+-------------
+
 linear svm native
 
 [RESULT] number of images tested : 372
@@ -81,3 +107,6 @@ poly svm native 50
 [RESULT] number of images tested : 372
 [RESULT] number of errors : 147
 [RESULT] taux de bonne prédiction : 60.48%
+
+-----------
+

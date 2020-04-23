@@ -23,11 +23,14 @@ def extract(input, output, model, size):
     elif model == "v_proj" :
         print("[INFO] feature extractor model : vertical_projection()")
         f_extractor = feat.vertical_projection
+    elif model == "d_proj" :
+        print("[INFO] feature extractor model : dual_projection()")
+        f_extractor = feat.dual_projection
     elif model == "native" :
         print("[INFO] feature extractor model : native()")
         f_extractor = feat.native
     else :
-        print("[INFO] error : feature extractor model {} not found. Try pixel_nb, h_proj or v_proj".format(model))
+        print("[INFO] error : feature extractor model {} not found. Try pixel_nb, h_proj, v_proj, d_proj or native".format(model))
         return
     
 

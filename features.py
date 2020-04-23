@@ -21,6 +21,9 @@ def horizontal_projection(imageBW) :
     image_rotate = cv2.rotate(imageBW, cv2.ROTATE_90_CLOCKWISE)
     return vertical_projection(image_rotate)
 
+def dual_projection(imageBW) :
+    return np.concatenate((vertical_projection(imageBW), horizontal_projection(imageBW)))
+
 def native(imageBW) :
     #img = np.zeros(([imageBW.shape[0], imageBW.shape[1]]), dtype = np.uint8)
     #for i, row in enumerate(imageBW) :
@@ -47,8 +50,9 @@ def main(image_path):
     print(pixel_number(imageBW))
     print(vertical_projection(imageBW))
     print(horizontal_projection(imageBW))
-    cv2.imshow("Image2", imageBW)
-    cv2.waitKey(0)
+    print(dual_projection(imageBW))
+    #cv2.imshow("Image2", imageBW)
+    #cv2.waitKey(0)
 
 
 if __name__ == '__main__':

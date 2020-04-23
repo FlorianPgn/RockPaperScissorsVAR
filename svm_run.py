@@ -23,6 +23,9 @@ def run(input, trainedsvm, labelencoder, model) :
     elif model == "v_proj" :
         print("[INFO] feature extractor model : vertical_projection()")
         f_extractor = feat.vertical_projection
+    elif model == "d_proj" :
+        print("[INFO] feature extractor model : dual_projection()")
+        f_extractor = feat.dual_projection
     elif model == "native" :
         print("[INFO] feature extractor model : native()")
         f_extractor = feat.native
@@ -48,7 +51,7 @@ def run(input, trainedsvm, labelencoder, model) :
         name = imagePath.split(os.path.sep)[-2]
 
         image = cv2.imread(imagePath)
-        image = imutils.resize(image, width=50)
+        image = imutils.resize(image, width=100)
 
         imageBW = bina.binarise_lambda(image)
 
